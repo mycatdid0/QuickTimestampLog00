@@ -45,6 +45,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -67,8 +68,8 @@ fun CalendarApp(startWithQuickEntry: Boolean, onFinish: () -> Unit) {
     val context = LocalContext.current
     val preferences = remember { AppPreferences(context.applicationContext) }
     val scope = rememberCoroutineScope()
-    var showQuickEntry by remember { mutableStateOf(startWithQuickEntry) }
-    var quickEntryOpenedFromSettings by remember { mutableStateOf(false) }
+    var showQuickEntry by rememberSaveable { mutableStateOf(startWithQuickEntry) }
+    var quickEntryOpenedFromSettings by rememberSaveable { mutableStateOf(false) }
     var permissionRefresh by remember { mutableStateOf(0) }
     var hasAllCalendarPermissions by remember {
         mutableStateOf(CalendarRepository.hasCalendarPermissions(context))
@@ -152,6 +153,7 @@ fun CalendarApp(startWithQuickEntry: Boolean, onFinish: () -> Unit) {
                             )
                         }
                         preferences.setDefaultCalendarId(calendarId)
+                        defaultCalendarId = calendarId
                         preferences.addRecentTitle(title)
                         recentTitles = preferences.getRecentTitles()
                         onResult(true)
@@ -345,24 +347,29 @@ private fun QuickEntryScreen(
     onSave: (String, Long, Long, Long, (Boolean) -> Unit) -> Unit
 ) {
     val context = LocalContext.current
-    var title by remember { mutableStateOf("") }
-    var startDateTime by remember { mutableStateOf(LocalDateTime.now()) }
-    var endDateTime by remember { mutableStateOf(startDateTime) }
-    var endTimeEdited by remember { mutableStateOf(false) }
-    var selectedCalendarId by remember(defaultCalendarId, calendars) {
-        mutableLongStateOf(
-            defaultCalendarId?.takeIf { id -> calendars.any { it.id == id } }
-                ?: calendars.firstOrNull { it.isPrimary }?.id
-                ?: calendars.firstOrNull()?.id
-                ?: NO_CALENDAR_ID
-        )
+    var title by rememberSaveable { mutableStateOf("") }
+    var startDateTimeText by rememberSaveable { mutableStateOf(LocalDateTime.now().toString()) }
+    var endDateTimeText by rememberSaveable { mutableStateOf(startDateTimeText) }
+    val startDateTime = LocalDateTime.parse(startDateTimeText)
+    val endDateTime = LocalDateTime.parse(endDateTimeText)
+    var endTimeEdited by rememberSaveable { mutableStateOf(false) }
+    var selectedCalendarId by rememberSaveable {
+        mutableLongStateOf(defaultCalendarId ?: NO_CALENDAR_ID)
     }
     var titleToDelete by remember { mutableStateOf<String?>(null) }
     var saving by remember { mutableStateOf(false) }
 
+    LaunchedEffect(defaultCalendarId, calendars) {
+        if (calendars.isNotEmpty() && calendars.none { it.id == selectedCalendarId }) {
+            selectedCalendarId = defaultCalendarId?.takeIf { id -> calendars.any { it.id == id } }
+                ?: calendars.firstOrNull { it.isPrimary }?.id
+                ?: calendars.first().id
+        }
+    }
+
     fun changeStart(updated: LocalDateTime) {
-        startDateTime = updated
-        if (!endTimeEdited) endDateTime = updated
+        startDateTimeText = updated.toString()
+        if (!endTimeEdited) endDateTimeText = updated.toString()
     }
 
     val startMillis = startDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -373,7 +380,9 @@ private fun QuickEntryScreen(
         topBar = {
             TopAppBar(
                 title = { Text("빠른 기록") },
-                actions = { TextButton(onClick = onSettings) { Text("설정") } }
+                actions = {
+                    TextButton(onClick = onSettings, enabled = !saving) { Text("설정") }
+                }
             )
         },
         bottomBar = {
@@ -497,11 +506,11 @@ private fun QuickEntryScreen(
                         DatePickerDialog(
                             context,
                             { _, year, month, day ->
-                                endDateTime = LocalDateTime.of(
+                                endDateTimeText = LocalDateTime.of(
                                     year, month + 1, day,
                                     endDateTime.hour, endDateTime.minute,
                                     endDateTime.second, endDateTime.nano
-                                )
+                                ).toString()
                                 endTimeEdited = true
                             },
                             endDateTime.year,
@@ -516,7 +525,8 @@ private fun QuickEntryScreen(
                     modifier = Modifier.weight(1f),
                     onClick = {
                         showTimePicker(context, endDateTime) { hour, minute ->
-                            endDateTime = endDateTime.withHour(hour).withMinute(minute).withSecond(0).withNano(0)
+                            endDateTimeText = endDateTime.withHour(hour).withMinute(minute)
+                                .withSecond(0).withNano(0).toString()
                             endTimeEdited = true
                         }
                     }
