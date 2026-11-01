@@ -19,8 +19,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -274,6 +272,10 @@ private fun SettingsScreen(
                     "선택한 캘린더는 이후 빠른 기록 화면의 기본값으로 사용됩니다.",
                     style = MaterialTheme.typography.bodySmall
                 )
+                Text(
+                    "Google 캘린더와 동기화하려면 Google 계정에 연결된 캘린더를 선택하세요. 다른 계정이나 기기 캘린더는 해당 계정의 동기화 설정을 따릅니다.",
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
 
             Row(
@@ -427,6 +429,7 @@ private fun QuickEntryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(contentPadding)
+                    .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -462,6 +465,10 @@ private fun QuickEntryScreen(
                     onSelected = { selectedCalendarId = it }
                 )
             }
+            Text(
+                "Google 캘린더와 동기화하려면 Google 계정 캘린더를 선택하세요.",
+                style = MaterialTheme.typography.bodySmall
+            )
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 DateTimePickerButton(
@@ -542,15 +549,15 @@ private fun QuickEntryScreen(
 
             Text("최근 제목 · 한 번 눌러 입력 · 길게 눌러 삭제", style = MaterialTheme.typography.titleSmall)
             if (recentTitles.isEmpty()) {
-                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(100.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text("저장한 제목이 여기에 최신순으로 표시됩니다.")
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    items(recentTitles, key = { it }) { recentTitle ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    recentTitles.forEach { recentTitle ->
                         Text(
                             text = recentTitle,
                             modifier = Modifier
