@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">QuickTimestampLog00</string>
-    <string name="widget_name">Quick Timestamp Log</string>
+    <string name="app_name">빠른 기록</string>
+    <string name="widget_name">빠른 기록</string>
     <string name="widget_description">한 번 눌러 현재 상황을 캘린더에 기록합니다.</string>
 </resources>

@@ -329,7 +329,7 @@ private fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text("위젯 사용", style = MaterialTheme.typography.titleMedium)
-                    Text("홈 화면을 길게 눌러 위젯 메뉴에서 ‘Quick Timestamp Log’를 추가하세요. 위젯을 누르면 빠른 기록 화면이 열립니다.")
+                    Text("홈 화면을 길게 눌러 위젯 메뉴에서 ‘빠른 기록’을 추가하세요. 위젯을 누르면 입력 화면이 열립니다.")
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
