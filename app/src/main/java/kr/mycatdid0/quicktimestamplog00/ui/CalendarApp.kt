@@ -44,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -66,8 +67,10 @@ fun CalendarApp(startWithQuickEntry: Boolean, onFinish: () -> Unit) {
     val context = LocalContext.current
     val preferences = remember { AppPreferences(context.applicationContext) }
     val scope = rememberCoroutineScope()
+    val screenStateHolder = rememberSaveableStateHolder()
     var showQuickEntry by rememberSaveable { mutableStateOf(startWithQuickEntry) }
     var quickEntryOpenedFromSettings by rememberSaveable { mutableStateOf(false) }
+    var settingsHasQuickDraft by rememberSaveable { mutableStateOf(false) }
     var permissionRefresh by remember { mutableStateOf(0) }
     var hasAllCalendarPermissions by remember {
         mutableStateOf(CalendarRepository.hasCalendarPermissions(context))
@@ -115,8 +118,9 @@ fun CalendarApp(startWithQuickEntry: Boolean, onFinish: () -> Unit) {
         }
     }
 
-    if (showQuickEntry) {
-        QuickEntryScreen(
+    screenStateHolder.SaveableStateProvider(if (showQuickEntry) "quick-entry" else "settings") {
+        if (showQuickEntry) {
+            QuickEntryScreen(
             calendars = calendars,
             defaultCalendarId = defaultCalendarId.takeIf { it != NO_CALENDAR_ID },
             recentTitles = recentTitles,
@@ -124,8 +128,8 @@ fun CalendarApp(startWithQuickEntry: Boolean, onFinish: () -> Unit) {
             loadingCalendars = loadingCalendars,
             onRequestPermissions = ::requestCalendarPermissions,
             onSettings = {
+                settingsHasQuickDraft = true
                 showQuickEntry = false
-                quickEntryOpenedFromSettings = false
             },
             onCancel = {
                 if (quickEntryOpenedFromSettings) {
@@ -171,9 +175,9 @@ fun CalendarApp(startWithQuickEntry: Boolean, onFinish: () -> Unit) {
                     }
                 }
             }
-        )
-    } else {
-        SettingsScreen(
+            )
+        } else {
+            SettingsScreen(
             calendars = calendars,
             defaultCalendarId = defaultCalendarId.takeIf { it != NO_CALENDAR_ID },
             recentTitles = recentTitles,
@@ -193,11 +197,19 @@ fun CalendarApp(startWithQuickEntry: Boolean, onFinish: () -> Unit) {
                 preferences.clearRecentTitles()
                 recentTitles = emptyList()
             },
-            onOpenQuickEntry = {
-                quickEntryOpenedFromSettings = true
-                showQuickEntry = true
-            }
-        )
+                resumeQuickEntry = settingsHasQuickDraft,
+                onResumeQuickEntry = {
+                    quickEntryOpenedFromSettings = true
+                    settingsHasQuickDraft = false
+                    showQuickEntry = true
+                },
+                onOpenQuickEntry = {
+                    quickEntryOpenedFromSettings = true
+                    settingsHasQuickDraft = false
+                    showQuickEntry = true
+                }
+            )
+        }
     }
 }
 
@@ -214,6 +226,8 @@ private fun SettingsScreen(
     onDefaultCalendarSelected: (Long) -> Unit,
     onDeleteRecentTitle: (String) -> Unit,
     onClearRecentTitles: () -> Unit,
+    resumeQuickEntry: Boolean,
+    onResumeQuickEntry: () -> Unit,
     onOpenQuickEntry: () -> Unit
 ) {
     var showClearConfirmation by remember { mutableStateOf(false) }
@@ -222,7 +236,13 @@ private fun SettingsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("빠른 기록 설정") },
-                actions = { TextButton(onClick = onOpenQuickEntry) { Text("빠른 기록") } }
+                actions = {
+                    if (resumeQuickEntry) {
+                        TextButton(onClick = onResumeQuickEntry) { Text("입력으로 돌아가기") }
+                    } else {
+                        TextButton(onClick = onOpenQuickEntry) { Text("빠른 기록") }
+                    }
+                }
             )
         }
     ) { contentPadding ->
